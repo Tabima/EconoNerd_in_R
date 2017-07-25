@@ -1,0 +1,49 @@
+---
+title: "Reading data for econonerds"
+author: "Javier F. Tabima, Tyler L. Schappe and Chris Mihiar"
+date: "7/24/2017"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Opening the files
+
+Chris has provided us with some example files to analyze. The objective is to bind them together after extracting the columns of interest.
+
+Lets check the files. The files seem to be separated by non-character spaces. To read these files we can use the read.delim function. Chris mentions we can use the `foreing` package
+
+```{r}
+library(foreign)
+# Listing the files
+files <- list.files(".", pattern = ".dbf*") 
+
+# Reading each of the files into a list of data frames
+
+tables.df <- list()
+system.time(for (i in 1:length(files[c(1:3000)])){
+  cat(i)
+  cat("\n")
+  tables.df[[i]] <- foreign::read.dbf(files[[i]])
+}
+)
+
+# Naming the list with the data frame names from the original files
+names(tables.df) <- gsub(unlist(files), pattern = ".dbf", replacement = "")
+
+# Creating a column that includes the dats for EACH DATA FRAME IN THE ORIGINAL LIST
+date <- lapply(files, function (x) substring(x, 16,23))
+for (i in 1:length(tables.df)){
+  tables.df[[i]]$date <- rep(date[[i]], nrow(tables.df[[i]]))
+}
+
+# Subsetting each of the data frames in the list by GEOID, date, and GRID_CODE
+sub.table <- lapply(tables.df, function (x) data.frame(fips=x$GEOID, date=x$date, daily=x$GRID_CODE))
+
+# Combine all the data frames within the list object into one BIG DATA FRAME
+system.time(final.table <- as.data.frame( data.table::rbindlist(sub.table)))
+```
+
